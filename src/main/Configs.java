@@ -24,14 +24,16 @@ public class Configs {
             "Int", "Nvarchar"
     );
 
+    public static int maxColumnsNumber = 6;
+
+    //For modal windows
+    public static String modal_text = "Text";
+    public static String modal_desc = "You are not alowed to see this :/";
 
 
     static {
         activity.add(new Object[]{ "Main", GlyphsDude.createIcon(FontAwesomeIcon.HOME, "20px")});
         activity.add(new Object[]{ "Main", GlyphsDude.createIcon(FontAwesomeIcon.HACKER_NEWS, "20px")});
         activity.add(new Object[]{ "Main", GlyphsDude.createIcon(FontAwesomeIcon.HOME, "20px")});
-
-
-
     }
 }

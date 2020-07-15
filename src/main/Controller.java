@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -69,9 +70,16 @@ public class Controller {
     @FXML
     private Button debug;
 
+    @FXML
+    private Label tableNameVerified;
+
 
     private double event_x=0, event_y=0;
     private ArrayList<String[]> columns = new ArrayList<String[]>();
+
+    public static boolean actTableNameVer = true;
+    public static boolean actColNameVer = true;
+
 
     @FXML
     void initialize() {
@@ -80,6 +88,9 @@ public class Controller {
         collapse();
         collapseAddMenu();
         initColumns();
+
+        InputStream font = Controller.class.getResourceAsStream("/assets/fonts/fa-solid-900.ttf");
+        Font fontAwesome = Font.loadFont(font, 15);
 
 
         //Deschide/inchide meniul
@@ -94,7 +105,7 @@ public class Controller {
         });
 
 
-        //La click-dreapta se va deschide context-menu-ul personalizat
+        //La click-dreapta se va deschide context-meniu-ul personalizat
         mainAnchorPane.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.SECONDARY) {
                 mainContextMenu.setLayoutX(event.getX());
@@ -109,9 +120,11 @@ public class Controller {
                 if (event2.getButton() == MouseButton.PRIMARY) {
                     mainContextMenu.setVisible(false);
                     addTableAnchorPane.setVisible(true);
+                    addTableAnchorPane.toFront();
 
                     this.event_x = event.getX();
                     this.event_y = event.getY();
+
 
                 }
             });
@@ -121,29 +134,33 @@ public class Controller {
         //La apasarea butonului finish in fereastra modala dupa adaugarea coloanelor necesare
         finish.setOnAction(event -> {
             Table table = addTable();
-            VBox vBox = table.getFXML();
+            if(table != null) {
+                VBox vBox = table.getFXML();
 
-            mainAnchorPane.getChildren().add(vBox);
-
-
-            vBox.setLayoutX(event_x);
-            vBox.setLayoutY(event_y);
-            vBox.setVisible(true);
-            vBox.setId(table.getId());
+                mainAnchorPane.getChildren().add(vBox);
 
 
-            //Drag tables
-            for (Node o : mainAnchorPane.getChildren()) {
-                if (o.getId() != null)
-                    if (o.getId().startsWith("table")) {
-                        ((VBox) o).getChildren().stream()
-                                .filter(child -> child.getId().startsWith("header"))
-                                .findFirst().get()
-                                .setOnMouseDragged(ev -> {
-                                    o.setLayoutX(ev.getSceneX());
-                                    o.setLayoutY(ev.getSceneY());
-                                });
-                    }
+                vBox.setLayoutX(event_x);
+                vBox.setLayoutY(event_y);
+                vBox.setVisible(true);
+                vBox.setId(table.getId());
+
+
+                //Drag tables
+                for (Node o : mainAnchorPane.getChildren()) {
+                    if (o.getId() != null)
+                        if (o.getId().startsWith("table")) {
+                            ((VBox) o).getChildren().stream()
+                                    .filter(child -> child.getId().startsWith("header"))
+                                    .findFirst().get()
+                                    .setOnMouseDragged(ev -> {
+                                        o.setLayoutX(ev.getSceneX());
+                                        o.setLayoutY(ev.getSceneY());
+                                    });
+                        }
+                }
+            } else {
+                Notify.incorectValues();
             }
         });
 
@@ -151,34 +168,64 @@ public class Controller {
         for (Node item : columnsVBox.getChildren()) {
             item.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
                 if (event.getCode() == KeyCode.ENTER) {
-                    addTableToArrayList();
-                    System.out.println(item.getId());
+
+                    //Limitez nr maximal de coloane care pot exista intr-un tabel
+                    if(columns.size() >= Configs.maxColumnsNumber) {
+                        Notify.reachedMaximumColumnNumber();
+                    } else {
+
+                        addTableToArrayList();
+                        System.out.println(item.getId());
 
 
-                    //La modificarea campurilor existente
-                    for (Node nod : columnsVBox.getChildren()) {
-                        if (nod.getId().equals("hboxTemplate"))
-                            continue;
+                        //La modificarea campurilor existente
+                        for (Node nod : columnsVBox.getChildren()) {
+                            if (nod.getId().equals("hboxTemplate"))
+                                continue;
 
-                        //Field 1
-                        ((TextField) ((HBox) nod).getChildren().get(0)).textProperty().addListener((observable, oldValue, newValue) -> {
-                            columnsChange(oldValue, newValue, 0);
-                        });
+                            //Field 1
+                            ((TextField) ((HBox) nod).getChildren().get(0)).textProperty().addListener((observable, oldValue, newValue) -> {
+                                if (RestrictionVerify.colNameVerify(newValue)) {
+                                    columnsChange(oldValue, newValue, 0);
+                                    actColNameVer = true;
+                                } else {
+                                    Notify.incorectValues();
+                                    actColNameVer = false;
+                                }
+                            });
 
-                        ((ComboBox) ((HBox) nod).getChildren().get(1)).valueProperty().addListener(((observable, oldValue, newValue) -> {
-                            columnsChange(oldValue.toString(), newValue.toString(), 1);
-                        }));
+                            ((ComboBox) ((HBox) nod).getChildren().get(1)).valueProperty().addListener(((observable, oldValue, newValue) -> {
+                                columnsChange(oldValue.toString(), newValue.toString(), 1);
+                            }));
 
-                        //Field 3
-                        ((TextField) ((HBox) nod).getChildren().get(2)).textProperty().addListener((observable, oldValue, newValue) -> {
-                            columnsChange(oldValue, newValue, 2);
-                        });
+                            //Field 3
+                            ((TextField) ((HBox) nod).getChildren().get(2)).textProperty().addListener((observable, oldValue, newValue) -> {
+                                columnsChange(oldValue, newValue, 2);
+                            });
+                        }
+
                     }
-
-
                 }
             });
         }
+
+        tableName.textProperty().addListener((observable, oldValue, newValue) -> {
+            tableNameVerified.setFont(fontAwesome);
+            if(RestrictionVerify.tableNameVerify(newValue)) {
+                tableNameVerified.setText(GlyphsDude.createIcon(FontAwesomeIcon.CHECK_CIRCLE, "70px").getText());
+                tableNameVerified.setStyle("-fx-fill: green");
+
+                actTableNameVer = true;
+            } else {
+                tableNameVerified.setText(GlyphsDude.createIcon(FontAwesomeIcon.TIMES_CIRCLE, "70px").getText());
+                tableNameVerified.setStyle("-fx-fill: red");
+
+                actTableNameVer = false;
+            }
+        });
+
+
+
 
 
         ////////
@@ -188,7 +235,6 @@ public class Controller {
                 System.out.println(Arrays.toString(columns.get(i)));
             }
         });
-
     }
 
     void columnsChange(String oldVal, String newVal, int itemIndex){
@@ -214,10 +260,20 @@ public class Controller {
 
     //La adaugarea unei noi coloane
     void addTableToArrayList(){
+
         //Citesc textul
         String col_name = ((TextField) hboxTemplate.getChildren().stream()
                 .filter(child -> "columnNameTemplate".equals(child.getId()))
                 .findFirst().get()).getText();
+
+
+        if(RestrictionVerify.colNameVerify(col_name)){
+            actColNameVer = true;
+        } else {
+            actColNameVer = false;
+            return;
+        }
+
 
         //Setez textul - ""
         ((TextField) hboxTemplate.getChildren().stream()
@@ -246,27 +302,26 @@ public class Controller {
                 col_name, col_type, col_con
         });
 
+            int rand = new Random().nextInt(10000);
 
-        int rand = new Random().nextInt(10000);
+            HBox hBox = new HBox();
+            hBox.setId("Col" + rand);
 
-        HBox hBox = new HBox();
-        hBox.setId("Col" + rand);
+            TextField tf_name = new TextField(col_name);
+            tf_name.setId("tf_name" + rand);
 
-        TextField tf_name = new TextField(col_name);
-        tf_name.setId("tf_name" + rand);
+            ComboBox db = new ComboBox();
+            db.setItems(Configs.avaliableTypes);
+            db.setValue(col_type);
+            db.setId("db" + rand);
 
-        ComboBox db = new ComboBox();
-        db.setItems(Configs.avaliableTypes);
-        db.setValue(col_type);
-        db.setId("db" + rand);
-
-        TextField tf_con = new TextField(col_con);
-        tf_con.setId("tf_con" + rand);
+            TextField tf_con = new TextField(col_con);
+            tf_con.setId("tf_con" + rand);
 
 
-        hBox.getChildren().addAll(tf_name, db, tf_con);
+            hBox.getChildren().addAll(tf_name, db, tf_con);
 
-        columnsVBox.getChildren().add(columnsVBox.getChildrenUnmodifiable().size()-1, hBox);
+            columnsVBox.getChildren().add(columnsVBox.getChildrenUnmodifiable().size() - 1, hBox);
 
     }
 
@@ -277,6 +332,16 @@ public class Controller {
      * */
     Table addTable(){
         String name = tableName.getText();
+        if(!actTableNameVer)
+            return null;
+        if(!actColNameVer)
+            return null;
+
+        String[] str = checkUreaded();
+        if(str != null)
+            if(!columns.contains(str))
+                columns.add(str);
+
         Table table = new Table(name, columns);
 
 
@@ -284,10 +349,9 @@ public class Controller {
         addTableAnchorPane.setVisible(false);
 
 
-
         Iterator<Node> iter = columnsVBox.getChildren().iterator();
-        while (iter.hasNext()){
-            if(!((Node) iter.next()).getId().equals("hboxTemplate")){
+        while (iter.hasNext()) {
+            if (!((Node) iter.next()).getId().equals("hboxTemplate")) {
                 iter.remove();
             }
         }
@@ -297,6 +361,35 @@ public class Controller {
         initColumns();
 
         return table;
+    }
+
+    /**
+     * Verifica daca ultima coloana a fost salvata in lista columns
+     * @return String[]
+     */
+    String[] checkUreaded(){
+        String[] str = new String[3];
+
+        str[0] = ((TextField) hboxTemplate.getChildren().stream()
+                .filter(child -> "columnNameTemplate".equals(child.getId()))
+                .findFirst().get()).getText();
+
+       //Preiau optiunea selectata
+        str[1] = ((ComboBox) hboxTemplate.getChildren().stream()
+                .filter(child -> "columnTypeTemplate".equals(child.getId()))
+                .findFirst().get()).getValue().toString();
+
+
+        //Citesc textul
+        str[2] = ((TextField) hboxTemplate.getChildren().stream()
+                .filter(child -> "columnConstaintsTemplate".equals(child.getId()))
+                .findFirst().get()).getText();
+
+
+        if(!str[0].isEmpty())
+            return str;
+        else
+            return null;
     }
 
 

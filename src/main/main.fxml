@@ -85,6 +85,7 @@
                </children>
             </VBox>
             <Button fx:id="finish" layoutX="216.0" layoutY="274.0" mnemonicParsing="false" text="Finish" />
+            <Label fx:id="tableNameVerified" layoutX="415.0" layoutY="25.0" prefHeight="18.0" prefWidth="16.0" />
          </children>
       </AnchorPane>
       <Button fx:id="debug" layoutX="669.0" layoutY="427.0" mnemonicParsing="false" text="Debug" />
